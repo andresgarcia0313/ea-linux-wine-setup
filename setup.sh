@@ -4,7 +4,8 @@ set -euo pipefail
 # Enterprise Architect 17 — Linux Wine Installer
 # Tested: Ubuntu 24.04, Wine 11.0 stable, EA 17.1.1716 x64
 
-WINEPREFIX_DIR="$HOME/.wine-EA"
+INSTALL_DIR="/opt/enterprise-architect"
+WINEPREFIX_DIR="$INSTALL_DIR/prefix"
 EA_INSTALL_DIR="C:\\Program Files\\Sparx Systems\\EA Trial"
 ICON_DIR="$HOME/.local/share/icons"
 APP_DIR="$HOME/.local/share/applications"
@@ -44,6 +45,10 @@ install_fonts() {
 
 create_prefix() {
     log "Creating Wine prefix at $WINEPREFIX_DIR"
+
+    sudo mkdir -p "$INSTALL_DIR"
+    sudo chown "$(id -un):$(id -gn)" "$INSTALL_DIR"
+
     export WINEPREFIX="$WINEPREFIX_DIR"
 
     if [[ -d "$WINEPREFIX_DIR/drive_c" ]]; then
@@ -127,11 +132,19 @@ create_launcher() {
         [[ -n "$wine_icon" ]] && cp "$wine_icon" "$icon_path"
     fi
 
+    # Create launcher script
+    cat > "$INSTALL_DIR/ea.sh" <<LAUNCHER
+#!/bin/bash
+WINEPREFIX="$WINEPREFIX_DIR" \\
+    wine "$EA_INSTALL_DIR\\\\EA.exe" "\\\$@"
+LAUNCHER
+    chmod +x "$INSTALL_DIR/ea.sh"
+
     cat > "$APP_DIR/enterprise-architect.desktop" <<EOF
 [Desktop Entry]
 Name=Enterprise Architect
 Comment=Sparx Systems Enterprise Architect 17 (Wine)
-Exec=env WINEPREFIX=$WINEPREFIX_DIR wine "$EA_INSTALL_DIR\\\\EA.exe"
+Exec=$INSTALL_DIR/ea.sh
 Type=Application
 Icon=$icon_path
 Categories=Development;Engineering;
@@ -167,4 +180,4 @@ create_launcher
 
 log "Installation complete!"
 echo "Launch from menu or run:"
-echo "  WINEPREFIX=$WINEPREFIX_DIR wine \"$EA_INSTALL_DIR\\EA.exe\""
+echo "  $INSTALL_DIR/ea.sh"

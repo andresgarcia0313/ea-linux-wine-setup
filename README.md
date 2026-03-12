@@ -15,7 +15,18 @@ Tested on **Ubuntu 24.04 / KDE Plasma** with **Wine 11.0 stable** using a **64-b
 
 ```bash
 chmod +x setup.sh
-./setup.sh /path/to/easetup_x64.msi
+sudo ./setup.sh /path/to/easetup_x64.msi
+```
+
+The script installs EA to `/opt/enterprise-architect/` following FHS standards.
+
+## Installation Layout
+
+```
+/opt/enterprise-architect/
+├── ea.sh                  # Launcher script
+└── prefix/                # Wine prefix (isolated)
+    └── drive_c/Program Files/Sparx Systems/EA Trial/EA.exe
 ```
 
 ## Manual Step-by-Step
@@ -47,10 +58,13 @@ sudo apt install -y fonts-crosextra-carlito
 
 ### 3. Create a Dedicated Wine Prefix
 
-Using an isolated prefix avoids conflicts with other Wine apps.
+Installed under `/opt/` per FHS standards for third-party software.
 
 ```bash
-export WINEPREFIX="$HOME/.wine-EA"
+sudo mkdir -p /opt/enterprise-architect
+sudo chown $(id -un):$(id -gn) /opt/enterprise-architect
+
+export WINEPREFIX="/opt/enterprise-architect/prefix"
 wineboot --init
 ```
 
@@ -59,7 +73,7 @@ Wait for initialization to complete. Ignore `fixme:service` warnings — they ar
 ### 4. Install Windows Dependencies
 
 ```bash
-export WINEPREFIX="$HOME/.wine-EA"
+export WINEPREFIX="/opt/enterprise-architect/prefix"
 
 # MSXML3 — required for XML handling
 winetricks --unattended msxml3
@@ -73,7 +87,7 @@ winetricks --force --unattended msxml4
 ### 5. Apply DLL Overrides
 
 ```bash
-export WINEPREFIX="$HOME/.wine-EA"
+export WINEPREFIX="/opt/enterprise-architect/prefix"
 
 cat > /tmp/ea_overrides.reg <<'EOF'
 [HKEY_CURRENT_USER\Software\Wine\DllOverrides]
@@ -83,22 +97,34 @@ cat > /tmp/ea_overrides.reg <<'EOF'
 EOF
 
 wine regedit /tmp/ea_overrides.reg
+rm -f /tmp/ea_overrides.reg
 ```
 
 ### 6. Install Enterprise Architect
 
 ```bash
-export WINEPREFIX="$HOME/.wine-EA"
+export WINEPREFIX="/opt/enterprise-architect/prefix"
 wine msiexec /i /path/to/easetup_x64.msi /passive
 ```
 
 Installation takes 1-2 minutes. The app installs to:
 `C:\Program Files\Sparx Systems\EA Trial\`
 
-### 7. Launch
+### 7. Create Launcher Script
 
 ```bash
-WINEPREFIX="$HOME/.wine-EA" wine "C:\Program Files\Sparx Systems\EA Trial\EA.exe"
+cat > /opt/enterprise-architect/ea.sh <<'EOF'
+#!/bin/bash
+WINEPREFIX="/opt/enterprise-architect/prefix" \
+    wine "C:\Program Files\Sparx Systems\EA Trial\EA.exe" "$@"
+EOF
+chmod +x /opt/enterprise-architect/ea.sh
+```
+
+### 8. Launch
+
+```bash
+/opt/enterprise-architect/ea.sh
 ```
 
 On first launch, select **Ultimate** edition for the full 30-day trial.
@@ -108,34 +134,43 @@ On first launch, select **Ultimate** edition for the full 30-day trial.
 The setup script creates a `.desktop` file automatically. To do it manually:
 
 ```bash
-# Extract icon from EA.exe
-wrestool -x -t 14 \
-    "$HOME/.wine-EA/drive_c/Program Files/Sparx Systems/EA Trial/EA.exe" \
-    -o /tmp/ea.ico
-icotool -x /tmp/ea.ico -o "$HOME/.local/share/icons/enterprise-architect.png"
+# Extract icon (Wine auto-extracts to hicolor on install)
+ICON=$(find ~/.local/share/icons/hicolor/256x256 -name "*EA*" 2>/dev/null | head -1)
+cp "$ICON" ~/.local/share/icons/enterprise-architect.png
 
 # Create launcher
-cat > "$HOME/.local/share/applications/enterprise-architect.desktop" <<'EOF'
+cat > ~/.local/share/applications/enterprise-architect.desktop <<'EOF'
 [Desktop Entry]
 Name=Enterprise Architect
 Comment=Sparx Systems Enterprise Architect 17 (Wine)
-Exec=env WINEPREFIX=$HOME/.wine-EA wine "C:\\Program Files\\Sparx Systems\\EA Trial\\EA.exe"
+Exec=/opt/enterprise-architect/ea.sh
 Type=Application
-Icon=$HOME/.local/share/icons/enterprise-architect.png
+Icon=/home/USER/.local/share/icons/enterprise-architect.png
 Categories=Development;Engineering;
 StartupNotify=true
 StartupWMClass=ea.exe
 EOF
 
-chmod +x "$HOME/.local/share/applications/enterprise-architect.desktop"
-update-desktop-database "$HOME/.local/share/applications/"
+# Replace USER with your username
+sed -i "s/USER/$(whoami)/" ~/.local/share/applications/enterprise-architect.desktop
+chmod +x ~/.local/share/applications/enterprise-architect.desktop
+update-desktop-database ~/.local/share/applications/
+```
+
+## Uninstall
+
+```bash
+sudo rm -rf /opt/enterprise-architect/
+rm -f ~/.local/share/applications/enterprise-architect.desktop
+rm -f ~/.local/share/icons/enterprise-architect.png
+update-desktop-database ~/.local/share/applications/
 ```
 
 ## Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| `kernel32.dll` load error | Prefix is corrupted. Delete `~/.wine-EA` and start from step 3 |
+| `kernel32.dll` load error | Prefix is corrupted. Delete the prefix dir and start from step 3 |
 | msxml4 assembly error 1603 | Expected on 64-bit prefix. The DLL still gets copied — EA works fine |
 | mdac28/jet40 won't install | They only work on 32-bit prefixes. Not needed for EA 17 x64 |
 | Fonts look wrong | Install `fonts-crosextra-carlito` (step 2) |
@@ -153,6 +188,7 @@ update-desktop-database "$HOME/.local/share/applications/"
 | Enterprise Architect | 17.1.1716 Trial **(64-bit / x64)** |
 | Installer | `easetup_x64.msi` (64-bit MSI) |
 | Prefix | **64-bit** (Wine wow64 mode) |
+| Install path | `/opt/enterprise-architect/` (FHS compliant) |
 
 ## References
 
