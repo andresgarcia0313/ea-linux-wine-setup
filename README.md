@@ -1,15 +1,15 @@
-# Enterprise Architect 17 on Linux (Wine)
+# Enterprise Architect 17 on Linux (Wine) — 64-bit
 
-Install Sparx Systems Enterprise Architect v17.1 on Linux using Wine stable.
+Install Sparx Systems Enterprise Architect v17.1 **(64-bit)** on Linux using Wine stable.
 
-Tested on **Ubuntu 24.04 / KDE Plasma** with **Wine 11.0 stable**.
+Tested on **Ubuntu 24.04 / KDE Plasma** with **Wine 11.0 stable** using a **64-bit Wine prefix (wow64)**.
 
 ## Prerequisites
 
 - Ubuntu/Debian-based Linux (64-bit)
 - Internet connection (for Wine repo and winetricks downloads)
 - ~4 GB free disk space
-- The EA installer: `easetup_x64.msi` from [Sparx Systems Trial](https://sparxsystems.com/products/ea/trial/request.html)
+- The EA **64-bit** installer: `easetup_x64.msi` (~321 MB) from [Sparx Systems Trial](https://sparxsystems.com/products/ea/trial/request.html)
 
 ## Quick Install
 
@@ -150,8 +150,9 @@ update-desktop-database "$HOME/.local/share/applications/"
 | Desktop | KDE Plasma |
 | Wine | 11.0 stable (winehq-stable) |
 | Winetricks | 20240105 |
-| Enterprise Architect | 17.1.1716 Trial (64-bit) |
-| Prefix | 64-bit (Wine wow64 mode) |
+| Enterprise Architect | 17.1.1716 Trial **(64-bit / x64)** |
+| Installer | `easetup_x64.msi` (64-bit MSI) |
+| Prefix | **64-bit** (Wine wow64 mode) |
 
 ## References
 
